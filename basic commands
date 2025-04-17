@@ -1,0 +1,45 @@
+# Scanning a “Local” Network
+nmap -sn 192.168.66.0/24
+
+# Scanning a “Remote” Network
+nmap -sn 192.168.11.0/24
+
+# List scan
+nmap -sL 192.168.0.1/24
+
+# Scanning TCP ports on host using connect scan (will complete TCP handshake)
+nmap -sT 192.168.124.211
+
+# Scanning TCP ports on host using stealth scan (will not complete TCP handshake)
+nmap -sS 192.168.124.211
+
+# Scanning UDP ports on host
+nmap -sU 192.168.124.211
+
+# Fast mode
+-F which scans the 100 most common ports (instead of the default 1000).
+
+# Range of ports
+-p[range] allows you to specify a range of ports to scan. For example, -p10-1024 scans from port 10 to port 1024, while -p-25 will scan all the ports between 1 and 25.
+
+# OS detection
+-O
+
+# Service and Version Detection
+-sV
+
+# Combination
+What if you can have both -O, -sV and some more in one option? That would be -A. This option enables OS detection, version scanning, and traceroute, among other things.
+
+# Force scan hosts
+-Pn
+
+# Speed
+-T0 (paranoid)
+-T1 (sneaky)
+-T2 (polite)
+-T3 (normal)
+-T4 (aggressive)
+
+# Verbosity
+-v
