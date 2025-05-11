@@ -1,26 +1,31 @@
-# Scanning a “Local” Network
+# Scanning a Network
 nmap -sn 192.168.66.0/24
-
-# Scanning a “Remote” Network
-nmap -sn 192.168.11.0/24
 
 # List scan
 nmap -sL 192.168.0.1/24
 
-# Scanning TCP ports on host using connect scan (will complete TCP handshake)
+# Connect scan (will complete TCP handshake)
 nmap -sT 192.168.124.211
+What if nmap sends a TCP SYN packet but gets no response?
+This means that the port is being protected by a firewall and thus the status is FILTERED.
+Example in Linux on how to make a firewall respond with TCP RST:
+iptables -I INPUT -p tcp --dport <port> -j REJECT --reject-with tcp-reset
 
-# Scanning TCP ports on host using stealth scan (will not complete TCP handshake)
+# Stealth (half-open/SYN) (will not complete TCP handshake)
 nmap -sS 192.168.124.211
 
-# Scanning UDP ports on host
+# UDP Scan
 nmap -sU 192.168.124.211
+When a packet is sent to an open UDP port, there should be no response. Nmap refers to this type of port with open|filtered which means that it suspects the port is open but protected by a firewall.
+When a packet is sent to a closed UDP port, the response should be a ping ICMP packet containing a message that the port is unreachable. This clearly identifies closed ports, which nmap marks as such and moves on.
+It's good practice to run an nmap scan with --top-ports <number> enabled. For example, scanning with  nmap -sU --top-ports 20 <target>. Will scan the top 20 most commonly used UDP ports, resulting in a much more acceptable scan time.
+
 
 # Fast mode
 -F which scans the 100 most common ports (instead of the default 1000).
 
 # Range of ports
--p[range] allows you to specify a range of ports to scan. For example, -p10-1024 scans from port 10 to port 1024, while -p-25 will scan all the ports between 1 and 25.
+-p[range] allows you to specify a range of ports to scan. For example, -p 10-1024 scans from port 10 to port 1024, while -p-25 will scan all the ports between 1 and 25.
 
 # OS detection
 -O
@@ -31,15 +36,60 @@ nmap -sU 192.168.124.211
 # Combination
 What if you can have both -O, -sV and some more in one option? That would be -A. This option enables OS detection, version scanning, and traceroute, among other things.
 
-# Force scan hosts
--Pn
-
 # Speed
 -T0 (paranoid)
 -T1 (sneaky)
 -T2 (polite)
 -T3 (normal)
 -T4 (aggressive)
+-T5 (hyper)
 
 # Verbosity
--v
+-v(v)(vv)(vvv)
+
+# Save output in 3 major formats
+-oA
+
+# Aggressive mode
+-A
+
+# Scan all ports
+-p-
+
+# Activate script
+--script
+
+# Activate all of the scripts in the vuln category
+--script=vuln
+
+# NULL, FIN and XMAS scans
+-sN, -sF, -sX
+NULL scans (-sN) are when the TCP request is sent with no flags set at all. The target host should respond with a RST if the port is closed.
+FIN scans (-sF) work in an identical way; however, instead of sending a completely empty packet, a request is sent with the FIN flag (usually used to gracefully close an active connection). Once again, nmap expects a RST if the port is closed.
+XMAS scans (-sX) send a malformed TCP packet and expects a RST response for closed ports. The flags which are set are (PSH, URG and FIN).
+If the port is open then there is no response to these packets. Unfortunately (as with open UDP ports), that is also an expected behaviour if the port is protected by a firewall, so NULL, FIN and XMAS scans will only ever identify ports as being open|filtered, closed, or filtered. If a port is identified as filtered with one of these scans then it is usually because the target has responded with an ICMP unreachable packet.
+
+# Scripts
+    safe:- Won't affect the target
+    intrusive:- Not safe: likely to affect the target
+    vuln:- Scan for vulnerabilities
+    exploit:- Attempt to exploit a vulnerability
+    auth:- Attempt to bypass authentication for running services (e.g. Log into an FTP server anonymously)
+    brute:- Attempt to bruteforce credentials for running services
+    discovery:- Attempt to query running services for further information about the network (e.g. query an SNMP server).
+
+To run a specific script, we would use --script=<script-name> , e.g. --script=http-fileupload-exploiter.
+For example: nmap -p 80 --script http-put --script-args http-put.url='/dav/shell.php',http-put.file='./shell.php'
+Note that the arguments are separated by commas, and connected to the corresponding script with periods (i.e.  <script-name>.<argument>).
+Need help with scripts? nmap --script-help <script-name>
+
+Where to find these scripts? https://nmap.org/nsedoc/
+
+# Firewall evasion
+Firewalls drop ICMP packets a lot of the time -> nmap wont work.
+Solution? -Pn
+However, it comes at the price of potentially taking a very long time to complete the scan (if the host really is dead then Nmap will still be checking and double checking every specified port). It's worth noting that if you're already directly on the local network, Nmap can also use ARP requests to determine host activity.
+---
+-f:- Used to fragment the packets (i.e. split them into smaller pieces) making it less likely that the packets will be detected by a firewall or IDS.
+--scan-delay <time>ms:- used to add a delay between packets sent. This is very useful if the network is unstable, but also for evading any time-based firewall/IDS triggers which may be in place.
+--badsum:- this is used to generate in invalid checksum for packets. Any real TCP/IP stack would drop this packet, however, firewalls may potentially respond automatically, without bothering to check the checksum of the packet. As such, this switch can be used to determine the presence of a firewall/IDS.
